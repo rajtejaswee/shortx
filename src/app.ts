@@ -15,8 +15,12 @@ app.use(express.urlencoded({extended: true,limit:"16kb"}));
 app.use(express.static("public"));
 
 import userRouter from "./routes/auth.route"
+import urlRouter from "./routes/url.route"
+import { redirectUrl } from "./controllers/url.controller";
 
 app.use("/api/v1/user", userRouter)
+app.use("/api/v1/url", urlRouter)
+app.get("/:shortCode", redirectUrl);
 
 import {errorHandler} from "./middlewares/error.middleware"
 app.use(errorHandler)
