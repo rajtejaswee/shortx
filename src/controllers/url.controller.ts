@@ -5,7 +5,7 @@ import { ApiError } from "../utils/ApiError"
 import { ApiResponse } from "../utils/ApiResponse"
 import { generateShortCode } from "../utils/urlGenerator"
 import { db } from "../db"
-import {eq, sql} from "drizzle-orm"
+import {eq, sql, desc} from "drizzle-orm"
 import {urls} from "../db/schema"
 
 interface AuthRequest extends Request {
@@ -84,6 +84,54 @@ const redirectUrl = AsyncHandler(async(req: Request, res:Response) => {
     return res.redirect(urlEntry.originalUrl)
 })
 
+const getUserUrls = AsyncHandler(async(req:Request, res: Response) => {
+    const authReq = req as AuthRequest
+
+    if (!authReq.userId) {
+        throw new ApiError(401, "Unauthorized");
+    }
+
+    const userUrls = await db
+                   .select()
+                   .from(urls)
+                   .where(eq(urls.userId, authReq.userId))
+                   .orderBy(desc(urls.createdAt));
+
+
+    return res.status(200).json(
+        new ApiResponse(200, userUrls, "User URLs retrieved successfully")
+    );
+})
+
+const getUrlStats  = AsyncHandler(async(req:Request, res: Response) => {
+
+    const authReq = req as AuthRequest;
+
+    const {shortCode} = req.params;
+    if(!authReq.userId) {
+        throw new ApiError(401, "Unauthorized")
+    }
+
+    const urlEntry = await db.query
+                    .urls
+                    .findFirst({
+                        where: eq(urls.shortCode, shortCode as string)
+                    });
+    
+    if(!urlEntry) {
+        throw new ApiError(404, "URL not found")
+    }
+    if(urlEntry.userId !== authReq.userId) {
+        throw new ApiError(403, "You are not authorized to view stats for this URL")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, urlEntry, "URL stats retrieved successfully")
+    );
+})
+
+
+
 export {
-    shortenUrl, redirectUrl
+    shortenUrl, redirectUrl, getUserUrls, getUrlStats
 }
